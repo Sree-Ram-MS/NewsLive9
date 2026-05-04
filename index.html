@@ -1,258 +1,245 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live News Dashboard</title>
-    <style>
-        :root {
-            --bg-color: #121212;
-            --text-color: #ffffff;
-            --primary: #e50914;
-            --secondary: #333333;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live News Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #fff; min-height: 100vh; }
 
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-        }
+  header {
+    position: sticky; top: 0; background: #000; padding: 12px 20px;
+    z-index: 1000; display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 2px solid #333;
+  }
 
-        /* Top Navigation & Controls */
-        header {
-            position: sticky;
-            top: 0;
-            background-color: #000000;
-            padding: 15px 20px;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            border-bottom: 2px solid var(--secondary);
-        }
+  h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: 0.5px; }
 
-        .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+  .header-right { display: flex; gap: 10px; align-items: center; }
 
-        h1 { margin: 0; font-size: 1.5rem; }
+  .btn {
+    background: #333; color: #fff; border: none; padding: 8px 14px;
+    border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #555; }
+  .btn-mute { background: #e50914; }
+  .btn-mute:hover { background: #b80710; }
 
-        .btn {
-            background-color: var(--secondary);
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.2s;
-        }
+  .hamburger {
+    background: #333; border: none; color: #fff; cursor: pointer;
+    padding: 8px 12px; border-radius: 6px; display: flex; flex-direction: column;
+    gap: 4px; transition: background 0.2s;
+  }
+  .hamburger:hover { background: #555; }
+  .hamburger span { display: block; width: 20px; height: 2px; background: #fff; border-radius: 2px; }
 
-        .btn:hover { background-color: #555; }
-        .btn-mute-all { background-color: var(--primary); }
-        .btn-mute-all:hover { background-color: #b80710; }
-        .btn-active { background-color: #28a745; }
+  /* Modal overlay */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    z-index: 2000; justify-content: center; align-items: center;
+  }
+  .modal-backdrop.open { display: flex; }
 
-        /* Links List */
-        .nav-links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
+  .modal {
+    background: #1e1e1e; border-radius: 12px; padding: 24px; width: 340px;
+    max-width: 90vw; border: 1px solid #333;
+  }
+  .modal h2 { font-size: 1.1rem; margin-bottom: 16px; color: #fff; }
 
-        /* Grid Layout */
-        .video-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            padding: 20px;
-        }
+  .channel-list { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
 
-        .video-card {
-            background-color: #1e1e1e;
-            border-radius: 8px;
-            overflow: hidden;
-            padding-bottom: 10px;
-            scroll-margin-top: 150px; /* Ensures header doesn't cover video when scrolling */
-        }
+  .channel-item {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #2a2a2a; padding: 10px 14px; border-radius: 8px; cursor: pointer;
+    transition: background 0.2s; border: 2px solid transparent;
+  }
+  .channel-item:hover { background: #383838; }
+  .channel-item.active { border-color: #28a745; background: #1a2e1a; }
 
-        .video-container {
-            position: relative;
-            width: 100%;
-            padding-top: 56.25%; /* 16:9 Aspect Ratio */
-        }
+  .channel-item span { font-size: 0.9rem; font-weight: 500; }
+  .channel-item .status { font-size: 0.75rem; color: #28a745; display: none; }
+  .channel-item.active .status { display: inline; }
 
-        .video-container iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
+  .modal-close {
+    margin-top: 16px; width: 100%; background: #333; color: #fff;
+    border: none; padding: 10px; border-radius: 8px; cursor: pointer;
+    font-weight: 600; transition: background 0.2s;
+  }
+  .modal-close:hover { background: #555; }
 
-        .video-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 15px 0 15px;
-        }
+  /* Video Grid */
+  .video-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 16px; padding: 16px;
+  }
 
-        .video-title {
-            margin: 0;
-            font-size: 1rem;
-            font-weight: 600;
-        }
+  .video-card {
+    background: #1e1e1e; border-radius: 8px; overflow: hidden;
+    scroll-margin-top: 70px; border: 2px solid transparent; transition: border-color 0.3s;
+  }
+  .video-card.active-card { border-color: #28a745; }
 
-        /* Mobile Adjustments */
-        @media (max-width: 768px) {
-            .video-grid {
-                grid-template-columns: 1fr; /* 1x9 Grid on mobile */
-            }
-            .header-top {
-                flex-direction: column;
-                gap: 15px;
-                text-align: center;
-            }
-        }
-    </style>
+  .video-container {
+    position: relative; width: 100%; padding-top: 56.25%;
+  }
+
+  .video-container iframe {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;
+    pointer-events: none;
+  }
+
+  /* Transparent click layer to prevent freeze on mobile */
+  .click-shield {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
+    cursor: default;
+  }
+
+  .video-label {
+    padding: 8px 12px; font-size: 0.85rem; font-weight: 600; color: #ccc;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  .live-dot { width: 8px; height: 8px; background: #e50914; border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  @media (max-width: 768px) {
+    .video-grid { grid-template-columns: 1fr; }
+    h1 { font-size: 1.1rem; }
+  }
+</style>
 </head>
 <body>
 
-    <header>
-        <div class="header-top">
-            <h1>Live News Dashboard</h1>
-            <button class="btn btn-mute-all" onclick="muteAll()">🔇 Mute All Audio</button>
+<header>
+  <h1>Live News Dashboard</h1>
+  <div class="header-right">
+    <button class="btn btn-mute" onclick="muteAll()">Mute All</button>
+    <button class="hamburger" onclick="openModal()" title="Select Channel">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<div class="modal-backdrop" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <h2>Select Channel to Listen</h2>
+    <div class="channel-list" id="channel-list"></div>
+    <button class="modal-close" onclick="closeModal()">Close</button>
+  </div>
+</div>
+
+<div class="video-grid" id="video-grid"></div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+  const videos = [
+    { id: "-8d8-c0yvyU", label: "Media One" },
+    { id: "20VYE0oC_TM", label: "Reporter News" },
+    { id: "WxgcelW2ue0", label: "Manorama News" },
+    { id: "vLHiPiL11LU", label: "Asianet News" },
+    { id: "FxeSfTclcY0", label: "24 News" },
+    { id: "YGEgelAiUf0", label: "Mathrubhumi News" },
+    { id: "DuVzAfPnEaY", label: "Janam TV" },
+    { id: "3UhHeND0qpk", label: "Money Control" },
+    { id: "Ctb_aUMffNg", label: "Polimar TV" },
+  ];
+
+  let players = [];
+  let activeIndex = -1;
+
+  function initUI() {
+    const grid = document.getElementById('video-grid');
+    const channelList = document.getElementById('channel-list');
+
+    videos.forEach((vid, index) => {
+      const card = document.createElement('div');
+      card.className = 'video-card';
+      card.id = `card-${index}`;
+      card.innerHTML = `
+        <div class="video-container">
+          <div id="player-${index}"></div>
+          <div class="click-shield"></div>
         </div>
-        <div class="nav-links" id="nav-links">
-            <!-- Navigation links will be injected here via JS -->
+        <div class="video-label">
+          <span>${vid.label}</span>
+          <span class="live-dot"></span>
         </div>
-    </header>
+      `;
+      grid.appendChild(card);
 
-    <div class="video-grid" id="video-grid">
-        <!-- Videos will be injected here via JS -->
-    </div>
+      const item = document.createElement('div');
+      item.className = 'channel-item';
+      item.id = `ch-${index}`;
+      item.innerHTML = `<span>${vid.label}</span><span class="status">Listening</span>`;
+      item.onclick = () => { selectChannel(index); closeModal(); };
+      channelList.appendChild(item);
+    });
+  }
 
-    <!-- Load YouTube IFrame API -->
-    <script src="https://www.youtube.com/iframe_api"></script>
-    <script>
-        // Extracted YouTube Video IDs from your provided URLs
-         const videos = [
-
-        { id: "-8d8-c0yvyU", label: "Meadia One" },
-
-        { id: "20VYE0oC_TM", label: "Reporter News" },
-
-        { id: "WxgcelW2ue0", label: "Manorama News" },
-
-        { id: "vLHiPiL11LU", label: "Asianet News" },
-
-        { id: "FxeSfTclcY0", label: "24 News" },
-
-        { id: "YGEgelAiUf0", label: "Mathrubhumi News" },
-
-        { id: "DuVzAfPnEaY", label: "Janam TV" },
-
-        { id: "3UhHeND0qpk", label: "Money Control" },
-
-        { id: "Ctb_aUMffNg", label: "Polimar TV" },
-
-    ];
-
-
-
-        let players = [];
-
-        // 1. Build the HTML structure dynamically
-        function initUI() {
-            const grid = document.getElementById('video-grid');
-            const nav = document.getElementById('nav-links');
-
-            videos.forEach((vid, index) => {
-                // Build Navigation Button
-                const navBtn = document.createElement('button');
-                navBtn.className = 'btn';
-                navBtn.id = `nav-btn-${index}`;
-                navBtn.innerHTML = `Go to & Listen: ${vid.label}`;
-                navBtn.onclick = () => focusVideo(index);
-                nav.appendChild(navBtn);
-
-                // Build Video Card
-                const card = document.createElement('div');
-                card.className = 'video-card';
-                card.id = `card-${index}`;
-                
-                card.innerHTML = `
-                    <div class="video-container">
-                        <div id="player-${index}"></div>
-                    </div>
-                    <div class="video-controls">
-                        <p class="video-title">${vid.label}</p>
-                        <button class="btn" id="audio-btn-${index}" onclick="playAudioOnly(${index})">🔊 Listen</button>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
+  function onYouTubeIframeAPIReady() {
+    videos.forEach((vid, index) => {
+      players[index] = new YT.Player(`player-${index}`, {
+        videoId: vid.id,
+        playerVars: {
+          autoplay: 1,
+          mute: 1,
+          playsinline: 1,
+          controls: 0,
+          rel: 0,
+          modestbranding: 1,
+          disablekb: 1,
+          fs: 0,
+          iv_load_policy: 3
+        },
+        events: {
+          onReady: (e) => { e.target.playVideo(); }
         }
+      });
+    });
+  }
 
-        // 2. YouTube API initialized
-        function onYouTubeIframeAPIReady() {
-            videos.forEach((vid, index) => {
-                players[index] = new YT.Player(`player-${index}`, {
-                    videoId: vid.id,
-                    playerVars: {
-                        'autoplay': 1,
-                        'mute': 1,        // MUST be muted to autoplay in modern browsers
-                        'playsinline': 1, // Crucial for mobile viewing
-                        'controls': 1
-                    }
-                });
-            });
-        }
+  function selectChannel(index) {
+    players.forEach((player, i) => {
+      const card = document.getElementById(`card-${i}`);
+      const ch = document.getElementById(`ch-${i}`);
+      if (i === index) {
+        try { player.unMute(); } catch(e){}
+        card.classList.add('active-card');
+        ch.classList.add('active');
+      } else {
+        try { player.mute(); } catch(e){}
+        card.classList.remove('active-card');
+        ch.classList.remove('active');
+      }
+    });
+    activeIndex = index;
+    document.getElementById(`card-${index}`).scrollIntoView({ behavior: 'smooth' });
+  }
 
-        // 3. Logic to play audio for ONE video, mute the rest
-        function playAudioOnly(activeIndex) {
-            players.forEach((player, index) => {
-                const btn = document.getElementById(`audio-btn-${index}`);
-                const navBtn = document.getElementById(`nav-btn-${index}`);
-                
-                if (index === activeIndex) {
-                    player.unMute();
-                    btn.classList.add('btn-active');
-                    btn.innerHTML = '🔊 Listening';
-                    navBtn.style.border = "2px solid #28a745";
-                } else {
-                    player.mute();
-                    btn.classList.remove('btn-active');
-                    btn.innerHTML = '🔊 Listen';
-                    navBtn.style.border = "none";
-                }
-            });
-        }
+  function muteAll() {
+    players.forEach((player, i) => {
+      try { player.mute(); } catch(e){}
+      document.getElementById(`card-${i}`).classList.remove('active-card');
+      document.getElementById(`ch-${i}`).classList.remove('active');
+    });
+    activeIndex = -1;
+  }
 
-        // 4. Mute all function
-        function muteAll() {
-            players.forEach((player, index) => {
-                player.mute();
-                const btn = document.getElementById(`audio-btn-${index}`);
-                const navBtn = document.getElementById(`nav-btn-${index}`);
-                btn.classList.remove('btn-active');
-                btn.innerHTML = '🔊 Listen';
-                navBtn.style.border = "none";
-            });
-        }
+  function openModal() {
+    document.getElementById('modal').classList.add('open');
+  }
 
-        // 5. Scroll to video and play its audio (For mobile nav links)
-        function focusVideo(index) {
-            document.getElementById(`card-${index}`).scrollIntoView({ behavior: 'smooth' });
-            playAudioOnly(index);
-        }
+  function closeModal() {
+    document.getElementById('modal').classList.remove('open');
+  }
 
-        // Run setup
-        initUI();
-    </script>
+  function closeModalOutside(e) {
+    if (e.target === document.getElementById('modal')) closeModal();
+  }
+
+  initUI();
+</script>
 </body>
 </html>
