@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>9 Video Player</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0f0f0f;
+            color: #fff;
+            font-family: 'Segoe UI', sans-serif;
+            min-height: 100vh;
+        }
+
+        /* ─── TOP BAR ─── */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: #1a1a1a;
+            border-bottom: 1px solid #333;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .topbar h1 {
+            font-size: 1.1rem;
+            color: #ff4444;
+            letter-spacing: 1px;
+        }
+
+        .mute-all-btn {
+            background: #ff4444;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: background 0.2s, transform 0.1s;
+            white-space: nowrap;
+        }
+
+        .mute-all-btn:hover {
+            background: #cc0000;
+            transform: scale(1.05);
+        }
+
+        .mute-all-btn.muted {
+            background: #555;
+        }
+
+        /* ─── LAYOUT ─── */
+        .main {
+            display: flex;
+            height: calc(100vh - 57px);
+        }
+
+        /* ─── SIDEBAR ─── */
+        .sidebar {
+            width: 220px;
+            background: #1a1a1a;
+            border-right: 1px solid #333;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .sidebar h2 {
+            font-size: 0.8rem;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 14px 16px 8px;
+            border-bottom: 1px solid #333;
+        }
+
+        .sidebar-list {
+            list-style: none;
+            padding: 8px 0;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            gap: 8px;
+            border-bottom: 1px solid #222;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .sidebar-item:hover {
+            background: #2a2a2a;
+        }
+
+        .sidebar-item.active-audio {
+            background: #1e3a1e;
+            border-left: 3px solid #4caf50;
+        }
+
+        .sidebar-num {
+            font-size: 0.75rem;
+            color: #888;
+            width: 18px;
+            flex-shrink: 0;
+            text-align: center;
+        }
+
+        .sidebar-label {
+            flex: 1;
+            font-size: 0.8rem;
+            color: #ccc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-mute-btn {
+            background: #333;
+            color: #ccc;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.15s;
+        }
+
+        .sidebar-mute-btn:hover {
+            background: #555;
+        }
+
+        .sidebar-mute-btn.muted {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        /* ─── GRID AREA ─── */
+        .grid-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        /* ─── VIDEO CARD ─── */
+        .video-card {
+            background: #1a1a1a;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid transparent;
+            transition: border 0.2s, transform 0.15s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .video-card:hover {
+            transform: scale(1.02);
+            border-color: #555;
+        }
+
+        .video-card.active-audio {
+            border-color: #4caf50;
+            box-shadow: 0 0 16px rgba(76, 175, 80, 0.4);
+        }
+
+        .video-card.muted-card {
+            opacity: 0.6;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            background: #111;
+        }
+
+        .card-title {
+            font-size: 0.78rem;
+            color: #bbb;
+            font-weight: 600;
+        }
+
+        .card-audio-badge {
+            display: none;
+            background: #4caf50;
+            color: #fff;
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .video-card.active-audio .card-audio-badge {
+            display: inline-block;
+        }
+
+        .iframe-wrap {
+            position: relative;
+            padding-top: 56.25%;
+            width: 100%;
+        }
+
+        .iframe-wrap iframe {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            border: none;
+            pointer-events: none; /* clicks go to overlay */
+        }
+
+        /* Click overlay to switch audio */
+        .click-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 10;
+            cursor: pointer;
+        }
+
+        /* Mute icon overlay */
+        .mute-overlay {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            z-index: 20;
+            background: rgba(0,0,0,0.6);
+            border: none;
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s;
+        }
+
+        .mute-overlay:hover {
+            background: rgba(255,68,68,0.8);
+        }
+
+        .mute-overlay.muted {
+            background: rgba(255,68,68,0.85);
+        }
+
+        /* ─── MOBILE ─── */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main {
+                height: auto;
+            }
+
+            .grid-area {
+                padding: 10px;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+                gap: 14px;
+            }
+
+            .video-card:hover {
+                transform: none;
+            }
+
+            .topbar h1 {
+                font-size: 0.95rem;
+            }
+
+            /* Mobile floating list button */
+            .mobile-list-btn {
+                display: flex;
+                background: #333;
+                color: #fff;
+                border: none;
+                padding: 8px 12px;
+                border-radius: 20px;
+                cursor: pointer;
+                font-size: 0.8rem;
+                align-items: center;
+                gap: 6px;
+                margin-right: 8px;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .mobile-list-btn {
+                display: none;
+            }
+        }
+
+        /* ─── MOBILE DRAWER ─── */
+        .drawer-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+        }
+
+        .drawer-overlay.open {
+            display: block;
+        }
+
+        .drawer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1a1a1a;
+            border-radius: 18px 18px 0 0;
+            padding: 0 0 20px;
+            max-height: 70vh;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: 2001;
+        }
+
+        .drawer.open {
+            transform: translateY(0);
+        }
+
+        .drawer-handle {
+            text-align: center;
+            padding: 12px;
+            cursor: pointer;
+        }
+
+        .drawer-handle span {
+            display: inline-block;
+            width: 40px;
+            height: 4px;
+            background: #555;
+            border-radius: 2px;
+        }
+
+        .drawer h2 {
+            font-size: 0.85rem;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0 16px 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .drawer .sidebar-list {
+            padding: 6px 0;
+        }
+
+        .drawer .sidebar-item {
+            padding: 12px 16px;
+        }
+
+        /* ─── SCROLLBAR ─── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+
+        /* Pulse animation for active */
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 8px rgba(76,175,80,0.4); }
+            50% { box-shadow: 0 0 20px rgba(76,175,80,0.8); }
+        }
+
+        .video-card.active-audio {
+            animation: pulse-green 2s infinite;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ─── TOP BAR ─── -->
+<div class="topbar">
+    <h1>📺 9 Video Wall</h1>
+    <div style="display:flex;align-items:center;gap:8px;">
+        <button class="mobile-list-btn" onclick="openDrawer()">☰ Videos</button>
+        <button class="mute-all-btn" id="muteAllBtn" onclick="toggleMuteAll()">🔇 Mute All</button>
+    </div>
+</div>
+
+<!-- ─── MAIN ─── -->
+<div class="main">
+
+    <!-- Sidebar (Desktop) -->
+    <aside class="sidebar">
+        <h2>📋 Video List</h2>
+        <ul class="sidebar-list" id="sidebarList"></ul>
+    </aside>
+
+    <!-- Grid -->
+    <div class="grid-area">
+        <div class="grid" id="videoGrid"></div>
+    </div>
+
+</div>
+
+<!-- ─── MOBILE DRAWER ─── -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+    <div class="drawer-handle" onclick="closeDrawer()"><span></span></div>
+    <h2>📋 Video List</h2>
+    <ul class="sidebar-list" id="drawerList"></ul>
+</div>
+
+<script>
+    const videos = [
+        { id: "https://www.youtube.com/watch?v=-8d8-c0yvyU", label: "Meadia One" },
+        { id: "https://www.youtube.com/watch?v=20VYE0oC_TM", label: "Reporter News" },
+        { id: "https://www.youtube.com/watch?v=WxgcelW2ue0", label: "Manorama News" },
+        { id: "https://www.youtube.com/watch?v=vLHiPiL11LU", label: "Asianet News" },
+        { id: "https://www.youtube.com/watch?v=FxeSfTclcY0", label: "24 News" },
+        { id: "https://www.youtube.com/watch?v=YGEgelAiUf0", label: "Mathrubhumi News" },
+        { id: "https://www.youtube.com/watch?v=DuVzAfPnEaY", label: "Janam TV" },
+        { id: "https://www.youtube.com/watch?v=3UhHeND0qpk", label: "Money Control" },
+        { id: "https://www.youtube.com/watch?v=Ctb_aUMffNg", label: "Polimar TV" },
+    ];
+
+    // ─── STATE ───
+    let players = [];           // YT player instances
+    let activeAudio = -1;       // index of video with unmuted audio
+    let mutedCards = new Array(9).fill(false);  // per-card mute
+    let allMuted = false;
+
+    // ─── YOUTUBE API ───
+    function onYouTubeIframeAPIReady() {
+        buildGrid();
+        buildSidebar();
+    }
+
+    function buildGrid() {
+        const grid = document.getElementById('videoGrid');
+        grid.innerHTML = '';
+        players = [];
+
+        videos.forEach((v, i) => {
+            // Card
+            const card = document.createElement('div');
+            card.className = 'video-card';
+            card.id = `card-${i}`;
+
+            card.innerHTML = `
+                <div class="card-header">
+                    <span class="card-title">${v.label}</span>
+                    <span class="card-audio-badge">🔊 AUDIO</span>
+                </div>
+                <div class="iframe-wrap">
+                    <div id="player-${i}"></div>
+                    <div class="click-overlay" onclick="switchAudio(${i})"></div>
+                    <button class="mute-overlay" id="muteBtn-${i}" onclick="toggleCardMute(event,${i})">🔊</button>
+                </div>
+            `;
+            grid.appendChild(card);
+
+            // YT Player
+            const player = new YT.Player(`player-${i}`, {
+                videoId: v.id,
+                playerVars: {
+                    autoplay: 1,
+                    mute: 1,
+                    loop: 1,
+                    playlist: v.id,
+                    controls: 0,
+                    rel: 0,
+                    modestbranding: 1,
+                    playsinline: 1,
+                },
+                events: {
+                    onReady: (e) => {
+                        e.target.setVolume(100);
+                        e.target.mute();
+                        e.target.playVideo();
+                    }
+                }
+            });
+            players.push(player);
+        });
+    }
+
+    function buildSidebar() {
+        ['sidebarList', 'drawerList'].forEach(listId => {
+            const list = document.getElementById(listId);
+            list.innerHTML = '';
+
+            videos.forEach((v, i) => {
+                const li = document.createElement('li');
+                li.className = 'sidebar-item';
+                li.id = `${listId}-item-${i}`;
+                li.innerHTML = `
+                    <span class="sidebar-num">${i + 1}</span>
+                    <span class="sidebar-label">${v.label}</span>
+                    <button class="sidebar-mute-btn" id="${listId}-mute-${i}"
+                        onclick="event.stopPropagation(); toggleCardMute(event, ${i})" 
+                        title="Mute this video">🔊</button>
+                `;
+                li.addEventListener('click', () => {
+                    scrollToCard(i);
+                    if (listId === 'drawerList') closeDrawer();
+                });
+                list.appendChild(li);
+            });
+        });
+    }
+
+    // ─── SWITCH AUDIO ───
+    function switchAudio(index) {
+        if (allMuted || mutedCards[index]) return;
+
+        // Mute previous
+        if (activeAudio !== -1 && activeAudio !== index) {
+            safePlayerAction(activeAudio, p => p.mute());
+            document.getElementById(`card-${activeAudio}`)?.classList.remove('active-audio');
+            updateSidebarActive(activeAudio, false);
+        }
+
+        if (activeAudio === index) {
+            // Click same → mute it (toggle off)
+            safePlayerAction(index, p => p.mute());
+            document.getElementById(`card-${index}`)?.classList.remove('active-audio');
+            updateSidebarActive(index, false);
+            activeAudio = -1;
+        } else {
+            // Unmute clicked
+            safePlayerAction(index, p => { p.unMute(); p.setVolume(100); });
+            document.getElementById(`card-${index}`)?.classList.add('active-audio');
+            updateSidebarActive(index, true);
+            activeAudio = index;
+        }
+    }
+
+    // ─── PER-CARD MUTE ───
+    function toggleCardMute(event, index) {
+        event.stopPropagation();
+        mutedCards[index] = !mutedCards[index];
+
+        const btn = document.getElementById(`muteBtn-${index}`);
+        const card = document.getElementById(`card-${index}`);
+        const sidebarBtn = document.getElementById(`sidebarList-mute-${index}`);
+        const drawerBtn = document.getElementById(`drawerList-mute-${index}`);
+
+        if (mutedCards[index]) {
+            safePlayerAction(index, p => p.mute());
+            btn && (btn.textContent = '🔇') && btn.classList.add('muted');
+            if (btn) { btn.textContent = '🔇'; btn.classList.add('muted'); }
+            card?.classList.add('muted-card');
+            if (sidebarBtn) { sidebarBtn.textContent = '🔇'; sidebarBtn.classList.add('muted'); }
+            if (drawerBtn) { drawerBtn.textContent = '🔇'; drawerBtn.classList.add('muted'); }
+            if (activeAudio === index) {
+                card?.classList.remove('active-audio');
+                updateSidebarActive(index, false);
+                activeAudio = -1;
+            }
+        } else {
+            if (!allMuted && activeAudio === index) {
+                safePlayerAction(index, p => { p.unMute(); p.setVolume(100); });
+            } else {
+                safePlayerAction(index, p => p.mute());
+            }
+            if (btn) { btn.textContent = '🔊'; btn.classList.remove('muted'); }
+            card?.classList.remove('muted-card');
+            if (sidebarBtn) { sidebarBtn.textContent = '🔊'; sidebarBtn.classList.remove('muted'); }
+            if (drawerBtn) { drawerBtn.textContent = '🔊'; drawerBtn.classList.remove('muted'); }
+        }
+
+        // Sync all-muted state
+        const anyUnmuted = mutedCards.some(m => !m);
+        if (!anyUnmuted) {
+            allMuted = true;
+            updateMuteAllBtn();
+        }
+    }
+
+    // ─── MUTE ALL ───
+    function toggleMuteAll() {
+        allMuted = !allMuted;
+
+        players.forEach((p, i) => {
+            safePlayerAction(i, player => {
+                if (allMuted) {
+                    player.mute();
+                } else {
+                    if (!mutedCards[i] && activeAudio === i) {
+                        player.unMute();
+                        player.setVolume(100);
+                    } else {
+                        player.mute();
+                    }
+                }
+            });
+        });
+
+        updateMuteAllBtn();
+    }
+
+    function updateMuteAllBtn() {
+        const btn = document.getElementById('muteAllBtn');
+        if (allMuted) {
+            btn.textContent = '🔊 Unmute All';
+            btn.classList.add('muted');
+        } else {
+            btn.textContent = '🔇 Mute All';
+            btn.classList.remove('muted');
+        }
+    }
+
+    // ─── HELPERS ───
+    function safePlayerAction(index, action) {
+        try {
+            if (players[index] && typeof players[index].mute === 'function') {
+                action(players[index]);
+            }
+        } catch (e) { /* player not ready yet */ }
+    }
+
+    function updateSidebarActive(index, isActive) {
+        ['sidebarList', 'drawerList'].forEach(listId => {
+            const item = document.getElementById(`${listId}-item-${index}`);
+            if (item) {
+                isActive ? item.classList.add('active-audio') : item.classList.remove('active-audio');
+            }
+        });
+    }
+
+    function scrollToCard(index) {
+        const card = document.getElementById(`card-${index}`);
+        if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Flash highlight
+            card.style.outline = '3px solid #ff4444';
+            setTimeout(() => card.style.outline = '', 1200);
+        }
+        switchAudio(index);
+    }
+
+    // ─── DRAWER ───
+    function openDrawer() {
+        document.getElementById('drawer').classList.add('open');
+        document.getElementById('drawerOverlay').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDrawer() {
+        document.getElementById('drawer').classList.remove('open');
+        document.getElementById('drawerOverlay').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    // ─── LOAD YT API ───
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+</script>
+
+</body>
+</html>
